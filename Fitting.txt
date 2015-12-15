@@ -1,0 +1,56 @@
+(*Definition of the original distribution function and a gaussian fitting is done here*)
+
+
+Cs = alpha - (1 + Zion)/4*(alpha - 2)*
+   Sqrt[alpha/(alpha - 1)]
+
+f[ppar_, pp_] := 
+  1/ppar^((Cs - 2)/(alpha - 1)) Exp[-(alpha + 
+        1)*pp^2/(2*(1 + Zion)*ppar)]*
+   Hypergeometric1F1[1 - Cs/(alpha + 1), 
+    1, (alpha + 1)*pp^2/(2*(1 + Zion)*ppar)];		(*distribution function (original) defined by Sandquist, pp: perpendicular momentum, ppar: parallel momentum*)
+
+fpp[ppar_, pp_] := 
+  Exp[-(alpha + 1)*pp^2/(2*(1 + Zion)*ppar)]*
+   Hypergeometric1F1[1 - Cs/(alpha + 1), 
+    1, (alpha + 1)*pp^2/(2*(1 + Zion)*ppar)];		(*part of the original distribution function, only the factors which are dependent on pp*)
+
+Dfppdpp[ppar_, pp_] := Derivative[0, 1][fpp][ppar, pp]	(*derivative of the fpp distribution function with respect to pp*)
+
+zeropp = FindRoot[
+  Hypergeometric1F1[1 - Cs/(alpha + 1), 
+   1, (alpha + 1)*pp0^2/(2*(1 + Zion)*1)], {pp0, 1}];	(*Finding first root of the hypergeometric function in pp, if ppar=1*)
+
+factor = 0.01;
+(*Fitting point is determined by this factor: "first root of the function" times "factor" gives the point where the fitting will be done*)
+
+pfit[ppar_] := factor*Sqrt[ppar]*pp0 /. zeropp		(*fitting point for arbitrary ppar*)
+
+sigma[ppar_] := 
+ Sqrt[-pfit[ppar] fpp[ppar, pfit[ppar]]/Dfppdpp[ppar, pfit[ppar]]]	(*variance of the gaussian function*)
+
+ampl[ppar_] := 
+ fpp[ppar, pfit[ppar]] sigma[ppar] Exp[
+   pfit[ppar]^2/(2 (sigma[ppar])^2)]					(*amplitude of the gaussian function*)
+
+f2[ppar_, pp_] := 
+ ampl[ppar]/(sigma[ppar]) Exp[-pp^2/(2 (sigma[ppar])^2)]		(*The gaussian function with which the non-physical tail of the distribution will be substituted*)
+
+fnew1[ppar_, pp_] := 
+ 1/ppar^((Cs - 2)/(alpha - 1))*((1 - 
+       UnitStep[pp - pfit[ppar]]) fpp[ppar, pp] + 
+    UnitStep[pp - pfit[ppar]] f2[ppar, pp])		(*new distribution function, in case of non-physical behaviour*)
+
+fnew2[ppar_, pp_] := 
+ 1/ppar^((Cs - 2)/(alpha - 1))*fpp[ppar, pp]		(*original distribution function*)
+
+fnew0[ppar_, pp_] := 
+ Which[Cs/(alpha + 1) < 1, fnew2[ppar, pp], True, 
+  fnew1[ppar, pp]]					(*deciding if there are non-physical properties and fnew1 should be used, or the original fnew2 distribution function can be used*)
+
+pC = 1/Sqrt[alpha-1];
+
+(*It is possible to define a normalizing constant, if needed*)
+konst = NIntegrate[NIntegrate[2*Pi*pp*f[ppar, pp], {pp, 0, 3}], {ppar, pC, 5}];
+
+fnew[ppar_, pp_] := fnew0[ppar, pp]/konst
