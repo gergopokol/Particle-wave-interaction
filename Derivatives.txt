@@ -1,0 +1,5 @@
+Dfperdpp[ppar_, pp_] := Derivative[0, 1][fnew][ppar, pp];
+(*derivative of the distribution function with respect to pp*)
+
+Dfperdppar[ppar_, pp_] := Derivative[1, 0][fnew][ppar, pp];
+(*derivative of the distribution function with respect to ppar*)
