@@ -5,7 +5,9 @@ Mathematica code;
 Models the linear phase of an interaction between runaway electrons and high frequency plasma waves.
 
 Parameters.txt -- Physical parameters of the simulation.
+
 Derivatives.txt -- Pre-defined derivatives of the runaway distribution function.
+
 Fitting.txt -- Function that regularizes one of the runaway distributions.
 
 Plasma wave dispersion and runaway distribution can be chosen from 2-2 options:
