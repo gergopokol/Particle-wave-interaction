@@ -1,0 +1,218 @@
+(*Runaway susceptibilities, growth rate*)
+
+<< Parameters.txt;
+
+Ecrit
+
+ED
+
+distributionfunction = 
+  "nearcritical"; (*valid values are: "disruption" and "nearcritical"*)
+whistlerwave = "electron"; (*valid values are: "magnetosonic" and "electron"*)
+
+resonancecondition = 
+  "ultrarelativistic"; (*valid values are "ultrarelativistic" and "general"*)
+
+ncalc = -1; (*valid values are "both" (meaning n=0 and n=-1) or any number*)
+
+nr = 3 10^17;
+
+(*Region of calculation*)
+(*minimum, maximum value of k and the step size between them*)
+kmin = 20;
+kmax = 900;
+kstep = 20;
+(*minimum, maximum value of theta and the step size*)
+thetamin = 1 Pi/180;
+thetamax = 90 Pi/180;
+thetastep = 5 Pi/180;
+
+opr = Sqrt[nr qe^2 Z/(epsilon0 me)];
+
+(*Distribution function*)
+
+alpha = 1.3;
+Zion = 1;
+
+If[distributionfunction == "disruption",
+ Epar = alpha*Ecrit;
+ beta = (alpha - 1)/(Zion + 1);
+ cZ = Sqrt[3 (Zion + 5)/Pi] loglambda;
+ tauC = 4 Pi epsilon0 me^2 c^3/(ne qe^4 loglambda);
+ f[ppar_, pp_, t_] := 
+  beta/(2 Pi cZ ppar) Exp[((alpha - 1) t/tauC - ppar)/cZ - beta pp^2/(2 ppar)];
+ fnew[ppar_, pp_] := f[ppar, pp, 0];
+ "Calculations are done with high electric field distribution function",
+ 
+ If[distributionfunction == "nearcritical",
+  << Fitting.txt;
+  "Calculations are done with nearcritical distribution function",
+  "Distribution function unknown"],
+ "Distribution function unknown"]
+
+<< Derivatives.txt;
+
+(*Plasma wave*)
+
+omega0[k_, theta_] := k vA Sqrt[1 + (k Cos[theta])^2 c^2/opi^2];
+
+If[whistlerwave == "magnetosonic",
+ omega0[k_, theta_] := k vA Sqrt[1 + (k Cos[theta])^2 c^2/opi^2];;
+ "Calculations are done for the magnetosonic-whistler wave",
+ 
+ If[whistlerwave == "electron",
+  << Solanal.txt;
+  omega0[k_, theta_] := omegaanal2[k, theta];
+  "Calculations are done for the electron-whistler wave",
+  "Plasma wave unknown"],
+ "Plasma wave unknown"]
+
+(*Susceptibilities*)
+
+DBesselJ[n_, z_] := Derivative[0, 1][BesselJ][n, z];
+
+If[resonancecondition == "general",
+ pres[n_, k_, theta_, 
+   pp_] := (-k Cos[theta] c n oce + 
+     omega0[k, 
+       theta] Sqrt[((k Cos[theta])^2 c^2 - (omega0[k, theta])^2) (1 + 
+           pp^2) + n^2 oce^2])/((k Cos[theta])^2 c^2 - (omega0[k, 
+        theta])^2);
+ h[n_, k_, theta_, pp_] := 
+  Abs[((-n oce omega0[k, 
+           theta] + (k Cos[
+             theta]) c Sqrt[((k Cos[theta])^2 c^2 - 
+               omega0[k, theta]^2) (1 + pp^2) + n^2 oce^2]))^3]/
+    Abs[((k Cos[theta])^2 c^2 - 
+        omega0[k, theta]^2)^3]/((k Cos[theta]) c (1 + pp^2) - 
+     n oce/((k Cos[theta])^2 c^2 - 
+         omega0[k, theta]^2) (-n oce (k Cos[theta]) c + 
+        omega0[k, 
+          theta] Sqrt[((k Cos[theta])^2 c^2 - omega0[k, theta]^2) (1 +
+               pp^2) + n^2 oce^2]));
+ ImChi11r[n_, k_, 
+   theta_] := -2 Pi^2 opr^2 oce^2/((k Sin[theta])^2 omega0[k, 
+        theta]^2 c^2) NIntegrate[
+    n^2 BesselJ[n, 
+       k Sin[theta] c pp/
+         oce]^2 (n oce Dfperdpp[pres[n, k, theta, pp], 
+          pp] + (k Cos[theta]) c pp Dfperdppar[pres[n, k, theta, pp], 
+          pp])/(Sqrt[1 + pp^2 + pres[n, k, theta, pp]^2])^2 h[n, k, 
+      theta, pp], {pp, 0, 10}];
+ ImChi22r[n_, k_, 
+   theta_] := -2 Pi^2 opr^2/(omega0[k, theta]^2) NIntegrate[
+    pp^2 DBesselJ[n, 
+       k Sin[theta] c pp/
+         oce]^2 (n oce Dfperdpp[pres[n, k, theta, pp], 
+          pp] + (k Cos[theta]) c pp Dfperdppar[pres[n, k, theta, pp], 
+          pp])/(Sqrt[1 + pp^2 + pres[n, k, theta, pp]^2])^2 h[n, k, 
+      theta, pp], {pp, 0, 10}];
+ ReChi12r[n_, k_, 
+   theta_] := -2 Pi^2 opr^2 oce/(k Sin[
+       theta] omega0[k, theta]^2 c) NIntegrate[
+    pp n BesselJ[n, k Sin[theta] c pp/oce] DBesselJ[n, 
+      k Sin[theta] c pp/
+        oce] (n oce Dfperdpp[pres[n, k, theta, pp], 
+          pp] + (k Cos[theta]) c pp Dfperdppar[pres[n, k, theta, pp], 
+          pp])/(Sqrt[1 + pp^2 + pres[n, k, theta, pp]^2])^2 h[n, k, 
+      theta, pp], {pp, 0, 10}];
+ "General resonance condition is used",
+ 
+ If[resonancecondition == "ultrarelativistic",
+  pres2[n_, k_, theta_] := -n oce/(k c Cos[theta] - omega0[k, theta]);
+  ImChi11r[n_, k_, 
+    theta_] := -2 Pi^2 opr^2 oce^2/((k Sin[theta])^2 omega0[k, 
+         theta]^2 c^2 (k c Cos[theta] - omega0[k, theta])) NIntegrate[
+     n^2 BesselJ[n, 
+        k Sin[theta] c pp/
+          oce]^2 (n oce Dfperdpp[pres2[n, k, theta], 
+           pp] + (k Cos[theta]) c pp Dfperdppar[pres2[n, k, theta], 
+           pp])/pres2[n, k, theta], {pp, 0, 10}]; 
+  ImChi22r[n_, k_, 
+    theta_] := -2 Pi^2 opr^2/(omega0[k, theta]^2 (k c Cos[theta] - 
+         omega0[k, theta])) NIntegrate[
+     pp^2 DBesselJ[n, 
+        k Sin[theta] c pp/
+          oce]^2 (n oce Dfperdpp[pres2[n, k, theta], 
+           pp] + (k Cos[theta]) c pp Dfperdppar[pres2[n, k, theta], 
+           pp])/pres2[n, k, theta], {pp, 0, 10}];
+  ReChi12r[n_, k_, 
+    theta_] := -2 Pi^2 opr^2 oce/(k Sin[
+        theta] omega0[k, theta]^2 c (k c Cos[theta] - 
+         omega0[k, theta])) NIntegrate[
+     pp n BesselJ[n, k Sin[theta] c pp/oce] DBesselJ[n, 
+       k Sin[theta] c pp/
+         oce] (n oce Dfperdpp[pres2[n, k, theta], 
+           pp] + (k Cos[theta]) c pp Dfperdppar[pres2[n, k, theta], 
+           pp])/pres2[n, k, theta], {pp, 0, 10}];
+  "Ultrarelativistic resonance condition is used",
+  "Resonance condition unknown"],
+ "Resonance condition unknown"]
+ 
+(*Growth rate*)
+
+growthrate[n_, k_, 
+   theta_] := -k^2 vA^2/(2 opi^2) ImChi11r[n, k, theta] omega0[k, 
+    theta];
+
+(*Defining the growth rate*)
+If[whistlerwave == "magnetosonic",
+ growthrate[n_, k_, 
+   theta_] := -k^2 vA^2/(2 opi^2) ImChi11r[n, k, theta] omega0[k, 
+    theta];
+ "Calculations are done for the magnetosonic-whistler wave",
+ 
+ If[whistlerwave == "electron",
+  growthrate[n_, k_, theta_] := 
+   omega0[k, theta]^3 (omega0[k, theta]^2 - 
+      oce^2) (ImChi11r[n, k, 
+         theta] (k^2 c^2/omega0[k, theta]^2 + 
+          ope^2/(omega0[k, theta]^2 - oce^2) - 1) + 
+       ImChi22r[n, k, 
+         theta] ((k Cos[theta])^2 c^2/omega0[k, theta]^2 + 
+          ope^2/(omega0[k, theta]^2 - oce^2) - 1) + 
+       2/omega0[k, 
+          theta] (-1) ope^2 oce/(omega0[k, theta]^2 - oce^2) ReChi12r[
+         n, k, theta])/(6 omega0[k, theta]^4 - 
+       4 omega0[k, theta]^2 (2 ope^2 + 
+          oce^2 + (k^2 + k^2 Cos[theta]^2) c^2) + 
+       2 (ope^4 + (k^2 + (k Cos[theta])^2) c^2 (ope^2 + oce^2) + 
+          k^2 (k Cos[theta])^2 c^4));
+  "Calculations are done for the electron-whistler wave",
+  "Plasma wave unknown"],
+ "Plasma wave unknown"]
+
+growthrate[-1, 2700, 0.3]/10^9
+
+growthrate[0, 2700, 0.3]/10^9
+
+Tstart = AbsoluteTime[];
+tmax = (thetamax - thetamin)/thetastep*(kmax - kmin)/kstep;
+t := (theta - thetamin)/
+    thetastep + (thetamax - thetamin)/thetastep*(k - kmin)/kstep;
+Monitor[If[ncalc == "both",
+   gr = Table[
+     growthrate[0, k, theta] + growthrate[-1, k, theta], {k, kmin, 
+      kmax, kstep}, {theta, thetamin, thetamax, thetastep}];
+   "Growth rate was calculated for both n=0, n=-1 and added",
+   gr = Table[
+     growthrate[ncalc, k, theta], {k, kmin, kmax, kstep}, {theta, 
+      thetamin, thetamax, thetastep}];
+   "Growth rate was calculated for" ncalc],
+  {ProgressIndicator[ (t - 0)/(tmax - 0)], 
+   StringForm[" Time left: `` s", 
+    NumberForm[(AbsoluteTime[] - Tstart) ((tmax - 0)/(t - 0) - 1), 
+     3] ]}];
+
+grplot = ListContourPlot[gr/oce, InterpolationOrder -> 1, 
+  Frame -> True, FrameLabel -> {"\[Theta]", "k [1/m]"}, 
+  RotateLabel -> False, 
+  BaseStyle -> {FontFamily -> "Times", FontSize -> 12}, 
+  DataRange -> {{thetamin, thetamax}, {kmin, kmax}}, 
+  ColorFunction -> ColorData["ThermometerColors"], Contours -> 12, 
+  ContourLabels -> All, 
+  PlotRange -> {{thetamin, thetamax}, {kmin, 3000}, {0, 0.0004}}]
+
+
+
+
